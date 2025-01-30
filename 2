@@ -1,0 +1,280 @@
+// DateTime Задачи
+import java.time.*;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.Locale;
+import java.util.Random;
+
+public class DateTimeTasks {
+    public static void main(String[] args) {
+        // 1. Основы LocalDate и LocalTime
+        LocalDate date = LocalDate.now();
+        LocalTime time = LocalTime.now();
+        System.out.println("Дата: " + date.format(DateTimeFormatter.ofPattern("dd-MM-yyyy")));
+        System.out.println("Время: " + time.format(DateTimeFormatter.ofPattern("HH:mm:ss")));
+
+        // 2. Сравнение дат
+        LocalDate date1 = LocalDate.of(2023, 5, 15);
+        LocalDate date2 = LocalDate.of(2023, 10, 20);
+        if (date1.isAfter(date2)) System.out.println("Первая дата позже");
+        else if (date1.isBefore(date2)) System.out.println("Первая дата раньше");
+        else System.out.println("Даты равны");
+
+        // 3. Сколько дней до Нового года?
+        LocalDate newYear = LocalDate.of(date.getYear() + 1, 1, 1);
+        System.out.println("Дней до Нового года: " + ChronoUnit.DAYS.between(date, newYear));
+
+        // 4. Проверка високосного года
+        System.out.println("Високосный год? " + Year.isLeap(date.getYear()));
+
+        // 5. Подсчет выходных за месяц
+        int month = date.getMonthValue();
+        int year = date.getYear();
+        long weekends = date.datesUntil(date.plusMonths(1))
+                .filter(d -> d.getDayOfWeek() == DayOfWeek.SATURDAY || d.getDayOfWeek() == DayOfWeek.SUNDAY)
+                .count();
+        System.out.println("Выходных в месяце: " + weekends);
+
+        // 6. Расчет времени выполнения метода
+        long start = System.nanoTime();
+        for (int i = 0; i < 1_000_000; i++);
+        long end = System.nanoTime();
+        System.out.println("Время выполнения: " + (end - start) / 1_000_000 + " мс");
+
+        // 7. Форматирование и парсинг даты
+        String dateStr = "15-05-2023";
+        LocalDate parsedDate = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+        System.out.println("Дата +10 дней: " + parsedDate.plusDays(10).format(DateTimeFormatter.ofPattern("yyyy/MM/dd")));
+
+        // 8. Конвертация между часовыми поясами
+        ZonedDateTime utcTime = ZonedDateTime.now(ZoneId.of("UTC"));
+        System.out.println("Московское время: " + utcTime.withZoneSameInstant(ZoneId.of("Europe/Moscow")));
+
+        // 9. Вычисление возраста по дате рождения
+        LocalDate birthDate = LocalDate.of(2000, 1, 1);
+        System.out.println("Возраст: " + Period.between(birthDate, date).getYears());
+
+        // 10. Создание календаря на месяц
+        for (LocalDate d = date.withDayOfMonth(1); d.getMonthValue() == month; d = d.plusDays(1)) {
+            System.out.println(d + " - " + (d.getDayOfWeek().getValue() < 6 ? "Рабочий день" : "Выходной"));
+        }
+
+        // 11. Генерация случайной даты в диапазоне
+        Random rand = new Random();
+        LocalDate randomDate = date.plusDays(rand.nextInt(30));
+        System.out.println("Случайная дата: " + randomDate);
+
+        // 12. Расчет времени до заданной даты
+        LocalDateTime eventTime = LocalDateTime.now().plusDays(2);
+        System.out.println("До события осталось: " + Duration.between(LocalDateTime.now(), eventTime).toHours() + " часов");
+
+        // 13. Вычисление количества рабочих часов
+        LocalDateTime startWork = LocalDateTime.of(date, LocalTime.of(9, 0));
+        LocalDateTime endWork = LocalDateTime.of(date, LocalTime.of(18, 0));
+        long workHours = ChronoUnit.HOURS.between(startWork, endWork);
+        System.out.println("Рабочих часов: " + workHours);
+
+        // 14. Конвертация даты в строку с учетом локали
+        System.out.println("Дата (RU): " + date.format(DateTimeFormatter.ofPattern("dd MMMM yyyy", new Locale("ru"))));
+
+        // 15. Определение дня недели по дате
+        System.out.println("День недели: " + date.getDayOfWeek().getDisplayName(java.time.format.TextStyle.FULL, new Locale("ru")));
+    }
+}
+// Singleton Enum
+//Задача 1
+        class DatabaseConnection {
+    private static DatabaseConnection instance;
+    
+    private DatabaseConnection() {
+        System.out.println("Подключение к базе данных создано.");
+    }
+    
+    public static DatabaseConnection getInstance() {
+        if (instance == null) {
+            instance = new DatabaseConnection();
+        }
+        return instance;
+    }
+    
+    public void connect() {
+        System.out.println("Соединение установлено.");
+    }
+    
+    public static void main(String[] args) {
+        DatabaseConnection db1 = DatabaseConnection.getInstance();
+        DatabaseConnection db2 = DatabaseConnection.getInstance();
+        
+        db1.connect();
+        
+        System.out.println("Ссылки одинаковы: " + (db1 == db2));
+    }
+}
+//Задача 2
+      import java.util.ArrayList;
+import java.util.List;
+
+class DatabaseConnection {
+    private static DatabaseConnection instance;
+    
+    private DatabaseConnection() {
+        System.out.println("Подключение к базе данных создано.");
+    }
+    
+    public static DatabaseConnection getInstance() {
+        if (instance == null) {
+            instance = new DatabaseConnection();
+        }
+        return instance;
+    }
+    
+    public void connect() {
+        System.out.println("Соединение установлено.");
+    }
+}
+
+class Logger {
+    private static Logger instance;
+    private List<String> logs;
+    
+    private Logger() {
+        logs = new ArrayList<>();
+    }
+    
+    public static Logger getInstance() {
+        if (instance == null) {
+            instance = new Logger();
+        }
+        return instance;
+    }
+    
+    public void log(String message) {
+        logs.add(message);
+        System.out.println("Лог: " + message);
+    }
+    
+    public void showLogs() {
+        System.out.println("Все логи:");
+        for (String log : logs) {
+            System.out.println(log);
+        }
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        DatabaseConnection db1 = DatabaseConnection.getInstance();
+        DatabaseConnection db2 = DatabaseConnection.getInstance();
+        
+        db1.connect();
+        
+        System.out.println("Ссылки одинаковы: " + (db1 == db2));
+        
+        Logger logger = Logger.getInstance();
+        logger.log("Первый лог");
+        logger.log("Второй лог");
+        logger.showLogs();
+    }
+}
+//Задача 3
+      import java.util.ArrayList;
+import java.util.List;
+
+class DatabaseConnection {
+    private static DatabaseConnection instance;
+    
+    private DatabaseConnection() {
+        System.out.println("Подключение к базе данных создано.");
+    }
+    
+    public static DatabaseConnection getInstance() {
+        if (instance == null) {
+            instance = new DatabaseConnection();
+        }
+        return instance;
+    }
+    
+    public void connect() {
+        System.out.println("Соединение установлено.");
+    }
+}
+
+class Logger {
+    private static Logger instance;
+    private List<String> logs;
+    
+    private Logger() {
+        logs = new ArrayList<>();
+    }
+    
+    public static Logger getInstance() {
+        if (instance == null) {
+            instance = new Logger();
+        }
+        return instance;
+    }
+    
+    public void log(String message) {
+        logs.add(message);
+        System.out.println("Лог: " + message);
+    }
+    
+    public void showLogs() {
+        System.out.println("Все логи:");
+        for (String log : logs) {
+            System.out.println(log);
+        }
+    }
+}
+
+enum OrderStatus {
+    NEW, IN_PROGRESS, DELIVERED, CANCELLED;
+}
+
+class Order {
+    private int orderId;
+    private OrderStatus status;
+    
+    public Order(int orderId) {
+        this.orderId = orderId;
+        this.status = OrderStatus.NEW;
+    }
+    
+    public void changeStatus(OrderStatus newStatus) {
+        if (this.status == OrderStatus.DELIVERED && newStatus == OrderStatus.CANCELLED) {
+            System.out.println("Ошибка: нельзя отменить доставленный заказ.");
+            return;
+        }
+        this.status = newStatus;
+        System.out.println("Статус заказа " + orderId + " изменен на " + status);
+    }
+    
+    public void displayStatus() {
+        System.out.println("Текущий статус заказа " + orderId + ": " + status);
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        DatabaseConnection db1 = DatabaseConnection.getInstance();
+        DatabaseConnection db2 = DatabaseConnection.getInstance();
+        
+        db1.connect();
+        
+        System.out.println("Ссылки одинаковы: " + (db1 == db2));
+        
+        Logger logger = Logger.getInstance();
+        logger.log("Первый лог");
+        logger.log("Второй лог");
+        logger.showLogs();
+        
+        Order order = new Order(101);
+        order.displayStatus();
+        order.changeStatus(OrderStatus.IN_PROGRESS);
+        order.changeStatus(OrderStatus.DELIVERED);
+        order.changeStatus(OrderStatus.CANCELLED);
+    }
+}
+
+//Задача 4
+      
