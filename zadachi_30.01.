@@ -276,5 +276,216 @@ public class Main {
     }
 }
 
+// Задача 4
+enum Season {
+    WINTER, SPRING, SUMMER, AUTUMN
+}
+
+class SeasonTranslator {
+    public static String getSeasonName(Season season) {
+        switch (season) {
+            case WINTER:
+                return "Зима";
+            case SPRING:
+                return "Весна";
+            case SUMMER:
+                return "Лето";
+            case AUTUMN:
+                return "Осень";
+            default:
+                throw new IllegalArgumentException("Неизвестный сезон: " + season);
+        }
+    }
+}
+
+class MainSeason {
+    public static void main(String[] args) {
+        System.out.println(SeasonTranslator.getSeasonName(Season.WINTER)); // Зима
+        System.out.println(SeasonTranslator.getSeasonName(Season.SPRING)); // Весна
+    }
+}
+
+
+//Потоки, Декоратор, Io NiO Задачи 
+
+//Задача 1
+import java.io.*;
+
+public class IOExample {
+    public static void main(String[] args) {
+        String inputFile = "input.txt";
+        String outputFile = "output.txt";
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(inputFile));
+             BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile))) {
+             
+            String line;
+            while ((line = reader.readLine()) != null) {
+                writer.write(line.toUpperCase());
+                writer.newLine();
+            }
+            System.out.println("Файл успешно обработан.");
+        } catch (IOException e) {
+            System.err.println("Ошибка при работе с файлами: " + e.getMessage());
+        }
+    }
+}
+
+
+//Задача 2
+interface TextProcessor {
+    String process(String text);
+}
+
+class SimpleTextProcessor implements TextProcessor {
+    @Override
+    public String process(String text) {
+        return text;
+    }
+}
+
+class UpperCaseDecorator implements TextProcessor {
+    private final TextProcessor processor;
+
+    public UpperCaseDecorator(TextProcessor processor) {
+        this.processor = processor;
+    }
+
+    @Override
+    public String process(String text) {
+        return processor.process(text).toUpperCase();
+    }
+}
+
+class TrimDecorator implements TextProcessor {
+    private final TextProcessor processor;
+
+    public TrimDecorator(TextProcessor processor) {
+        this.processor = processor;
+    }
+
+    @Override
+    public String process(String text) {
+        return processor.process(text).trim();
+    }
+}
+
+class ReplaceDecorator implements TextProcessor {
+    private final TextProcessor processor;
+
+    public ReplaceDecorator(TextProcessor processor) {
+        this.processor = processor;
+    }
+
+    @Override
+    public String process(String text) {
+        return processor.process(text).replace(" ", "_");
+    }
+}
+
+public class DecoratorExample {
+    public static void main(String[] args) {
+        TextProcessor processor = new ReplaceDecorator(
+            new UpperCaseDecorator(
+                new TrimDecorator(new SimpleTextProcessor())
+            )
+        );
+
+        String result = processor.process(" Hello world ");
+        System.out.println(result); // Вывод: HELLO_WORLD
+    }
+}
+
+//Задача 3
+import java.io.*;
+import java.nio.file.*;
+import java.nio.channels.FileChannel;
+
+public class PerformanceComparison {
+    public static void main(String[] args) throws IOException {
+        String inputFile = "large_input.txt";
+        String outputFileIO = "output_io.txt";
+        String outputFileNIO = "output_nio.txt";
+
+        // IO (FileReader, BufferedReader)
+        long startIO = System.currentTimeMillis();
+        try (BufferedReader reader = new BufferedReader(new FileReader(inputFile));
+             BufferedWriter writer = new BufferedWriter(new FileWriter(outputFileIO))) {
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                writer.write(line);
+                writer.newLine();
+            }
+        }
+        long endIO = System.currentTimeMillis();
+        System.out.println("IO время: " + (endIO - startIO) + " ms");
+
+        // NIO (FileChannel)
+        long startNIO = System.currentTimeMillis();
+        try (FileChannel sourceChannel = FileChannel.open(Paths.get(inputFile), StandardOpenOption.READ);
+             FileChannel destChannel = FileChannel.open(Paths.get(outputFileNIO),
+                     StandardOpenOption.WRITE, StandardOpenOption.CREATE)) {
+            sourceChannel.transferTo(0, sourceChannel.size(), destChannel);
+        }
+        long endNIO = System.currentTimeMillis();
+        System.out.println("NIO время: " + (endNIO - startNIO) + " ms");
+    }
+}
+
+
 //Задача 4
+import java.io.*;
+import java.nio.channels.FileChannel;
+import java.nio.file.*;
+
+public class FileCopyNIO {
+    public static void main(String[] args) {
+        String source = "source_file.txt";
+        String dest = "dest_file.txt";
+
+        try (FileChannel sourceChannel = FileChannel.open(Paths.get(source), StandardOpenOption.READ);
+             FileChannel destChannel = FileChannel.open(Paths.get(dest), StandardOpenOption.WRITE, StandardOpenOption.CREATE)) {
+
+            sourceChannel.transferTo(0, sourceChannel.size(), destChannel);
+            System.out.println("Файл успешно скопирован.");
+        } catch (IOException e) {
+            System.err.println("Ошибка при копировании файла: " + e.getMessage());
+        }
+    }
+}
+
+//Задача 5
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.AsynchronousFileChannel;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.concurrent.Future;
+
+public class AsyncFileReader {
+    public static void main(String[] args) {
+        String filePath = "async_input.txt";
+
+        try (AsynchronousFileChannel asyncChannel = AsynchronousFileChannel.open(
+                Paths.get(filePath), StandardOpenOption.READ)) {
+
+            ByteBuffer buffer = ByteBuffer.allocate(1024);
+            Future<Integer> operation = asyncChannel.read(buffer, 0);
+
+            while (!operation.isDone()) {
+                System.out.println("Чтение файла...");
+            }
+
+            buffer.flip();
+            while (buffer.hasRemaining()) {
+                System.out.print((char) buffer.get());
+            }
+            buffer.clear();
+            System.out.println("\nЧтение завершено.");
+        } catch (IOException e) {
+            System.err.println("Ошибка при асинхронном чтении файла: " + e.getMessage());
+        }
+    }
+}
       
