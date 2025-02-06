@@ -1,0 +1,109 @@
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Paths;
+import java.util.Scanner;
+
+public class CaesarCipher {
+
+    private static final int ALPHABET_SIZE = 26;
+
+    // Метод для шифрования текста
+    public static String encrypt(String text, int shift) {
+        StringBuilder encryptedText = new StringBuilder();
+        for (char c : text.toCharArray()) {
+            if (Character.isLetter(c)) {
+                char base = Character.isLowerCase(c) ? 'a' : 'A';
+                c = (char) ((c - base + shift) % ALPHABET_SIZE + base);
+            }
+            encryptedText.append(c);
+        }
+        return encryptedText.toString();
+    }
+
+    // Метод для расшифровки текста
+    public static String decrypt(String text, int shift) {
+        return encrypt(text, ALPHABET_SIZE - shift);  // Просто используем сдвиг в обратную сторону
+    }
+
+    // Метод для шифрования файла
+    public static void encryptFile(String inputFilePath, String outputFilePath, int shift) throws IOException {
+        String content = readFile(inputFilePath);
+        String encryptedText = encrypt(content, shift);
+        writeFile(outputFilePath, encryptedText);
+    }
+
+    // Метод для расшифровки файла
+    public static void decryptFile(String inputFilePath, String outputFilePath, int shift) throws IOException {
+        String content = readFile(inputFilePath);
+        String decryptedText = decrypt(content, shift);
+        writeFile(outputFilePath, decryptedText);
+    }
+
+    // Метод для чтения файла
+    private static String readFile(String filePath) throws IOException {
+        return new String(Files.readAllBytes(Paths.get(filePath)));
+    }
+
+    // Метод для записи в файл
+    private static void writeFile(String filePath, String content) throws IOException {
+        Files.write(Paths.get(filePath), content.getBytes());
+    }
+
+    // Проверка корректности ключа
+    public static boolean isValidShift(int shift) {
+        return shift >= 0 && shift < ALPHABET_SIZE;
+    }
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+
+        try {
+            // Главное меню
+            System.out.println("Шифр Цезаря");
+            System.out.println("1 - Шифрование файла");
+            System.out.println("2 - Расшифровка файла");
+            System.out.print("Выберите действие (1/2): ");
+            int action = scanner.nextInt();
+            scanner.nextLine(); // Consume newline
+
+            System.out.print("Введите путь к исходному файлу: ");
+            String inputFilePath = scanner.nextLine();
+
+            System.out.print("Введите путь к выходному файлу: ");
+            String outputFilePath = scanner.nextLine();
+
+            System.out.print("Введите ключ шифрования (сдвиг от 0 до 25): ");
+            int shift = scanner.nextInt();
+            scanner.nextLine(); // Consume newline
+
+            if (!isValidShift(shift)) {
+                System.out.println("Ошибка: Неверный ключ. Ключ должен быть в пределах от 0 до 25.");
+                return;
+            }
+
+            switch (action) {
+                case 1:
+                    encryptFile(inputFilePath, outputFilePath, shift);
+                    System.out.println("Шифрование завершено. Результат записан в файл: " + outputFilePath);
+                    break;
+                case 2:
+                    decryptFile(inputFilePath, outputFilePath, shift);
+                    System.out.println("Расшифровка завершена. Результат записан в файл: " + outputFilePath);
+                    break;
+                default:
+                    System.out.println("Ошибка: Неверный выбор.");
+            }
+
+        } catch (IOException e) {
+            System.out.println("Ошибка при обработке файлов: " + e.getMessage());
+        } catch (java.util.InputMismatchException e) {
+            System.out.println("Ошибка: Неверный формат ввода. Пожалуйста, введите число.");
+            scanner.nextLine(); // Очистить ввод
+        } catch (InvalidPathException e) {
+            System.out.println("Ошибка: Неверный путь к файлу: " + e.getMessage());
+        } finally {
+            scanner.close();
+        }
+    }
+}
