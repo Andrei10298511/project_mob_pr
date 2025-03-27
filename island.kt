@@ -1,187 +1,474 @@
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.TimeUnit
-import kotlin.random.Random
+import java.util.*;
+import java.util.concurrent.*;
 
-// 🌍 Остров
-class Island(val width: Int, val height: Int) {
-    val grid: Array<Array<Location>> = Array(width) { Array(height) { Location() } }
+// Базовый класс для всех животных
+abstract class Animal {
+    protected String name;
+    protected int speed;
+    protected double maxFood;
+    protected double weight;
+    protected boolean isAlive = true;
 
-    fun printStats() {
-        println("\n=== 🏝️ Остров: текущее состояние ===")
-        for (row in grid) {
-            for (cell in row) {
-                if (cell.animals.isNotEmpty()) {
-                    print("[${cell.animals.joinToString("") { it.emoji }}] ")
-                } else {
-                    print("[  ] ")
-                }
-            }
-            println()
-        }
+    public Animal(String name, int speed, double maxFood, double weight) {
+        this.name = name;
+        this.speed = speed;
+        this.maxFood = maxFood;
+        this.weight = weight;
     }
+
+    public String getName() { return name; }
+    public abstract void eat(Location location);
+    public void move(Island island, int x, int y) {
+        Random random = new Random();
+        int newX = Math.max(0, Math.min(island.getWidth() - 1, x + random.nextInt(3) - 1));
+        int newY = Math.max(0, Math.min(island.getHeight() - 1, y + random.nextInt(3) - 1));
+        island.moveAnimal(this, x, y, newX, newY);
+    }
+    public abstract Animal reproduce();
 }
 
-// 📍 Клетка острова
+// Хищники
+class Wolf extends Predator {
+    private static final Map<Class<? extends Animal>, Integer> diet = Map.of(Rabbit.class, 60, Deer.class, 40, Mouse.class, 80, Horse.class, 10, Goat.class, 60, Sheep.class, 70, Hog.class,15, Buffalo.class, 10, Duck.class, 40);
+
+    public Wolf() { super("Wolf", 3, 8, 50.0, diet); }
+
+    @Override
+    public void eat(Location location) {
+        hunt(location);
+    }
+
+    @Override
+    protected Animal createNew() {
+        return new Wolf();
+    }
+
+    @Override public Animal reproduce() { return new Wolf(); }
+}
+
+class Boa extends Predator {
+    private static final Map<Class<? extends Animal>, Integer> diet = Map.of(Fox.class,15,Rabbit.class, 20, Mouse.class, 40, Duck.class, 10);
+
+    public Boa() { super("Boa", 1, 3, 15, diet); }
+
+    @Override
+    public void eat(Location location) {
+        hunt(location);
+    }
+
+    @Override
+    protected Animal createNew() {
+        return new Boa();
+    }
+
+    @Override public Animal reproduce() { return new Boa(); }
+}
+
+class Fox extends Predator {
+    private static final Map<Class<? extends Animal>, Integer> diet = Map.of(Rabbit.class, 70, Mouse.class, 90, Duck.class, 60, Caterpillar.class, 40);
+
+    public Fox() { super("Fox", 2, 2, 8, diet); }
+
+    @Override
+    public void eat(Location location) {
+        hunt(location);
+    }
+
+    @Override
+    protected Animal createNew() {
+        return new Fox();
+    }
+
+    @Override public Animal reproduce() { return new Fox(); }
+}
+
+class Bear extends Predator {
+    private static final Map<Class<? extends Animal>, Integer> diet = Map.of(Boa.class, 80, Horse.class, 40, Deer.class, 80, Rabbit.class, 80, Mouse.class,90, Goat.class, 70, Sheep.class, 70, Hog.class, 50, Buffalo.class,20, Duck.class,10);
+
+    public Bear() { super("Bear", 2, 15, 200.0, diet); }
+
+    @Override
+    public void eat(Location location) {
+        hunt(location);
+    }
+
+    @Override
+    protected Animal createNew() {
+        return new Bear();
+    }
+
+    @Override public Animal reproduce() { return new Bear(); }
+}
+
+class Eagle extends Predator {
+    private static final Map<Class<? extends Animal>, Integer> diet = Map.of(Fox.class, 10,Rabbit.class, 90, Mouse.class, 90, Duck.class, 80);
+
+    public Eagle() { super("Eagle", 4, 3, 6.0, diet); }
+
+    @Override
+    public void eat(Location location) {
+        hunt(location);
+    }
+
+    @Override
+    protected Animal createNew() {
+        return new Eagle();
+    }
+
+
+
+    @Override public Animal reproduce() { return new Eagle(); }
+}
+
+// Метод охоты для хищников
+abstract class Predator extends Animal {
+    protected final Map<Class<? extends Animal>, Integer> diet;
+    private boolean isHungry = false;
+    private int hungerLevel = 5; // Новая переменная голода. Если 0 — хищник умирает.
+
+    public Predator(String name, int speed, int maxFood, double weight, Map<Class<? extends Animal>, Integer> diet) {
+        super(name, speed, maxFood, weight);
+        this.diet = diet;
+    }
+
+    protected void hunt(Location location) {
+        Iterator<Animal> iterator = location.animals.iterator();
+        boolean ate = false;
+
+        while (iterator.hasNext()) {
+            Animal neighbor = iterator.next();
+            if (diet.containsKey(neighbor.getClass()) && Math.random() * 100 < diet.get(neighbor.getClass())) {
+                iterator.remove();
+                isHungry = true;
+                hungerLevel = 5; // Восстанавливаем сытость после еды
+                System.out.println(name + " съел " + neighbor.name);
+                ate = true;
+                break;
+            }
+        }
+
+        if (!ate) {
+            hungerLevel--; // Если не нашел еду, становится голоднее
+            if (hungerLevel <= 0) {
+                System.out.println(name + " умер от голода.");
+                location.animals.remove(this); // Удаляем хищника из списка
+            }
+        }
+    }
+
+    @Override
+    public Animal reproduce() {
+        if (isHungry && hungerLevel > 2 && Math.random() < 0.1) { // Размножение только если хищник сыт
+            isHungry = false;
+            System.out.println(name + " размножился.");
+            return createNew();
+        }
+        return null;
+    }
+
+    protected abstract Animal createNew();
+}
+
+
+//Травоядные
+class Rabbit extends Animal {
+    public Rabbit() { super("Rabbit", 2, 4, 2.5); }
+    @Override
+    public void eat(Location location) {
+        if (location.plantCount > 0) {
+            location.plantCount--;
+            System.out.println(name + " ест траву.");
+        }
+    }
+    @Override public Animal reproduce() { return new Rabbit(); }
+}
+
+class Mouse extends Animal {
+    private static final Map<Class<? extends Animal>, Integer> diet = Map.of(Caterpillar.class, 90 );
+
+    public Mouse() { super("Mouse", 1, 2, 0.5); }
+
+    @Override
+    public void eat(Location location) {
+        Iterator<Animal> iterator = location.animals.iterator();
+        boolean ate = false;
+
+        // Проверяем диету
+        while (iterator.hasNext()) {
+            Animal neighbor = iterator.next();
+            if (diet.containsKey(neighbor.getClass()) && Math.random() * 100 < diet.get(neighbor.getClass())) {
+                iterator.remove();
+                System.out.println(name + " съел " + neighbor.getName());
+                ate = true;
+                break;
+            }
+        }
+
+        // Если не съел, ест траву (если растения доступны)
+        if (!ate && location.plantCount > 0) {
+            location.plantCount--;
+            System.out.println(name + " ест траву.");
+        }
+    }
+
+    @Override public Animal reproduce() { return new Mouse(); }
+}
+
+
+class Deer extends Animal {
+    public Deer() { super("Deer", 3, 6, 80.0); }
+    @Override
+    public void eat(Location location) {
+        if (location.plantCount > 0) {
+            location.plantCount--;
+            System.out.println(name + " ест траву.");
+        }
+    }
+    @Override public Animal reproduce() { return new Deer(); }
+}
+
+class Horse extends Animal {
+    public Horse() { super("Horse", 4, 10, 120.0); }
+    @Override
+    public void eat(Location location) {
+        if (location.plantCount > 0) {
+            location.plantCount--;
+            System.out.println(name + " ест траву.");
+        }
+    }
+    @Override public Animal reproduce() { return new Horse(); }
+}
+
+class Goat extends Animal {
+    public Goat() { super("Goat", 3, 10, 60); }
+    @Override
+    public void eat(Location location) {
+        if (location.plantCount > 0) {
+            location.plantCount--;
+            System.out.println(name + " ест траву.");
+        }
+    }
+    @Override public Animal reproduce() { return new Rabbit(); }
+}
+
+class Sheep extends Animal {
+    public Sheep() { super("Sheep", 3, 15, 70); }
+    @Override
+    public void eat(Location location) {
+        if (location.plantCount > 0) {
+            location.plantCount--;
+            System.out.println(name + " ест траву.");
+        }
+    }
+    @Override public Animal reproduce() { return new Rabbit(); }
+}
+
+class Hog extends Animal {
+    private static final Map<Class<? extends Animal>, Integer> diet = Map.of(Mouse.class, 50, Caterpillar.class, 90 );
+
+    public Hog() { super("Hog", 2, 50, 400); }
+
+    @Override
+    public void eat(Location location) {
+        Iterator<Animal> iterator = location.animals.iterator();
+        boolean ate = false;
+
+        // Проверяем диету
+        while (iterator.hasNext()) {
+            Animal neighbor = iterator.next();
+            if (diet.containsKey(neighbor.getClass()) && Math.random() * 100 < diet.get(neighbor.getClass())) {
+                iterator.remove();
+                System.out.println(name + " съел " + neighbor.getName());
+                ate = true;
+                break;
+            }
+        }
+
+        // Если не съел, ест траву (если растения доступны)
+        if (!ate && location.plantCount > 0) {
+            location.plantCount--;
+            System.out.println(name + " ест траву.");
+        }
+    }
+
+    @Override public Animal reproduce() { return new Hog(); }
+}
+
+
+class Buffalo extends Animal {
+    public Buffalo() { super("Buffalo", 3, 100, 700); }
+    @Override
+    public void eat(Location location) {
+        if (location.plantCount > 0) {
+            location.plantCount--;
+            System.out.println(name + " ест траву.");
+        }
+    }
+    @Override public Animal reproduce() { return new Rabbit(); }
+}
+
+class Duck extends Animal {
+    private static final Map<Class<? extends Animal>, Integer> diet = Map.of(Caterpillar.class, 90);
+
+    public Duck() { super("Duck", 4, 0.15, 1); }
+
+    @Override
+    public void eat(Location location) {
+        Iterator<Animal> iterator = location.animals.iterator();
+        boolean ate = false;
+
+        // Проверяем диету
+        while (iterator.hasNext()) {
+            Animal neighbor = iterator.next();
+            if (diet.containsKey(neighbor.getClass()) && Math.random() * 100 < diet.get(neighbor.getClass())) {
+                iterator.remove();
+                System.out.println(name + " съел " + neighbor.getName());
+                ate = true;
+                break;
+            }
+        }
+
+        // Если не съел, ест траву (если растения доступны)
+        if (!ate && location.plantCount > 0) {
+            location.plantCount--;
+            System.out.println(name + " ест траву.");
+        }
+    }
+
+    @Override public Animal reproduce() { return new Duck(); }
+}
+
+
+class Caterpillar extends Animal {
+    public Caterpillar() { super("Caterpillar", 0, 0, 0.01); }
+    @Override
+    public void eat(Location location) {
+        if (location.plantCount > 0) {
+            location.plantCount--;
+            System.out.println(name + " ест траву.");
+        }
+    }
+    @Override public Animal reproduce() { return new Rabbit(); }
+}
+
+// Класс для локаций
 class Location {
-    val animals = mutableListOf<Animal>()
-    var plants: Int = Random.nextInt(5, 20) // Количество растений
+    List<Animal> animals = new ArrayList<>();
+    int plantCount = 5; // Количество растений
 }
 
-// 🦁 Базовый класс животного
-abstract class Animal(
-    var energy: Int,
-    val speed: Int,
-    val maxPerCell: Int,
-    val foodNeed: Int,
-    val emoji: String
-) {
-    abstract fun move(island: Island, x: Int, y: Int)
-    abstract fun eat(location: Location)
-    abstract fun reproduce(location: Location)
+// Класс Остров
+class Island {
+    private final int width;
+    private final int height;
+    private final Location[][] locations;
 
-    fun decreaseEnergy() {
-        energy -= 5
-        if (energy <= 0) println("$emoji погиб от голода! ☠️")
-    }
-}
-
-// 🦊 Хищники
-abstract class Predator(energy: Int, speed: Int, maxPerCell: Int, foodNeed: Int, emoji: String) :
-    Animal(energy, speed, maxPerCell, foodNeed, emoji) {
-
-    override fun eat(location: Location) {
-        val prey = location.animals.filterIsInstance<Herbivore>().randomOrNull()
-        if (prey != null && Random.nextInt(100) < 60) {
-            location.animals.remove(prey)
-            energy += foodNeed * 10
-            println("$emoji съел ${prey.emoji}!")
+    public Island(int width, int height) {
+        this.width = width;
+        this.height = height;
+        this.locations = new Location[width][height];
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                locations[i][j] = new Location();
+            }
         }
+        populateIsland();
     }
-}
 
-// 🦌 Травоядные
-abstract class Herbivore(energy: Int, speed: Int, maxPerCell: Int, foodNeed: Int, emoji: String) :
-    Animal(energy, speed, maxPerCell, foodNeed, emoji) {
+    public int getWidth() { return width; }
+    public int getHeight() { return height; }
 
-    override fun eat(location: Location) {
-        if (location.plants >= foodNeed) {
-            location.plants -= foodNeed
-            energy += foodNeed * 5
-            println("$emoji съел растение 🌿 ($foodNeed кг)")
-        }
-    }
-}
-
-// 🐺 Волк
-class Wolf : Predator(50, 3, 30, 8, "🐺") {
-    override fun move(island: Island, x: Int, y: Int) = chooseDirectionAndMove(island, x, y)
-    override fun reproduce(location: Location) = reproduceIfPossible(location) { Wolf() }
-}
-
-// 🦌 Олень
-class Deer : Herbivore(40, 3, 20, 10, "🦌") {
-    override fun move(island: Island, x: Int, y: Int) = chooseDirectionAndMove(island, x, y)
-    override fun reproduce(location: Location) = reproduceIfPossible(location) { Deer() }
-}
-
-// 🐰 Кролик (Rabbit)
-class Rabbit : Herbivore(30, 2, 50, 3, "🐰") {
-    override fun move(island: Island, x: Int, y: Int) = chooseDirectionAndMove(island, x, y)
-    override fun reproduce(location: Location) = reproduceIfPossible(location) { Rabbit() }
-}
-
-// 🦆 Утка
-class Duck : Herbivore(25, 4, 200, 1, "🦆") {
-    override fun eat(location: Location) {
-        val caterpillar = location.animals.filterIsInstance<Caterpillar>().randomOrNull()
-        if (caterpillar != null) {
-            location.animals.remove(caterpillar)
-            energy += 5
-            println("🦆 съела 🐛!")
-        } else {
-            super.eat(location)
+    private void populateIsland() {
+        Random random = new Random();
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                if (random.nextDouble() < 0.4) locations[i][j].animals.add(new Wolf());
+                if (random.nextDouble() < 0.4) locations[i][j].animals.add(new Bear());
+                if (random.nextDouble() < 0.4) locations[i][j].animals.add(new Boa());
+                if (random.nextDouble() < 0.4) locations[i][j].animals.add(new Fox());
+                if (random.nextDouble() < 0.4) locations[i][j].animals.add(new Eagle());
+                if (random.nextDouble() < 0.6) locations[i][j].animals.add(new Deer());
+                if (random.nextDouble() < 0.6) locations[i][j].animals.add(new Horse());
+                if (random.nextDouble() < 0.6) locations[i][j].animals.add(new Rabbit());
+                if (random.nextDouble() < 0.6) locations[i][j].animals.add(new Mouse());
+                if (random.nextDouble() < 0.6) locations[i][j].animals.add(new Buffalo());
+                if (random.nextDouble() < 0.6) locations[i][j].animals.add(new Duck());
+                if (random.nextDouble() < 0.6) locations[i][j].animals.add(new Caterpillar());
+                if (random.nextDouble() < 0.6) locations[i][j].animals.add(new Sheep());
+                if (random.nextDouble() < 0.6) locations[i][j].animals.add(new Goat());
+                if (random.nextDouble() < 0.6) locations[i][j].animals.add(new Hog());
+            }
         }
     }
 
-    override fun move(island: Island, x: Int, y: Int) = chooseDirectionAndMove(island, x, y)
-    override fun reproduce(location: Location) = reproduceIfPossible(location) { Duck() }
-}
-
-// 🐛 Гусеница
-class Caterpillar : Herbivore(10, 1, 1000, 1, "🐛") {
-    override fun move(island: Island, x: Int, y: Int) = chooseDirectionAndMove(island, x, y)
-    override fun reproduce(location: Location) = reproduceIfPossible(location) { Caterpillar() }
-}
-
-// 🔄 Функция передвижения с учетом скорости
-fun Animal.chooseDirectionAndMove(island: Island, x: Int, y: Int) {
-    repeat(speed) {
-        val dx = listOf(-1, 0, 1).random()
-        val dy = listOf(-1, 0, 1).random()
-        val newX = (x + dx).coerceIn(0, island.width - 1)
-        val newY = (y + dy).coerceIn(0, island.height - 1)
-
-        if (island.grid[newX][newY].animals.size < maxPerCell) {
-            island.grid[newX][newY].animals.add(this)
-            island.grid[x][y].animals.remove(this)
-            println("$emoji переместился в ($newX, $newY) 🏃‍♂️")
-            return
+    public void moveAnimal(Animal animal, int oldX, int oldY, int newX, int newY) {
+        if (locations[oldX][oldY].animals.remove(animal)) {
+            locations[newX][newY].animals.add(animal);
         }
     }
-}
 
-// 💑 **Функция размножения**
-fun Animal.reproduceIfPossible(location: Location, createAnimal: () -> Animal) {
-    val sameSpecies = location.animals.filter { it::class == this::class }
-
-    if (sameSpecies.size >= 2 && location.animals.size < maxPerCell && Random.nextInt(100) < 30) {
-        val baby = createAnimal()
-        location.animals.add(baby)
-        println("$emoji размножились! 👶 Теперь в клетке: ${location.animals.count { it::class == this::class }}")
-    }
-}
-
-// 🚀 **Симуляция**
-class Simulation(private val island: Island) {
-    private val executor: ScheduledExecutorService = Executors.newScheduledThreadPool(3)
-
-    fun start() {
-        executor.scheduleAtFixedRate({ tick() }, 0, 2, TimeUnit.SECONDS)
+    public void simulate() {
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(3);
+        scheduler.scheduleAtFixedRate(this::updateAnimals, 0, 2, TimeUnit.SECONDS);
+        scheduler.scheduleAtFixedRate(this::printStatistics, 0, 3, TimeUnit.SECONDS);
     }
 
-    private fun tick() {
-        println("\n=== ⏳ Новый такт ===")
+    private void updateAnimals() {
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                // Растения растут
+                locations[i][j].plantCount = Math.min(10, locations[i][j].plantCount + 1);
 
-        for (x in island.grid.indices) {
-            for (y in island.grid[x].indices) {
-                val location = island.grid[x][y]
-                location.animals.toList().forEach { animal ->
-                    animal.move(island, x, y)
-                    animal.eat(location)
-                    animal.reproduce(location)
-                    animal.decreaseEnergy()
-                    if (animal.energy <= 0) location.animals.remove(animal)
+                // Животные едят, двигаются и размножаются
+                List<Animal> animalsCopy = new ArrayList<>(locations[i][j].animals);
+                for (Animal animal : animalsCopy) {
+                    animal.eat(locations[i][j]);
+                    animal.move(this, i, j);
+                    if (Math.random() < 0.1) {
+                        locations[i][j].animals.add(animal.reproduce());
+                    }
                 }
             }
         }
-
-        island.printStats()
     }
+
+    private void printStatistics() {
+        try {
+            System.out.println("=== Статистика по острову ===");
+            boolean hasAnimals = false;
+
+            for (int i = 0; i < width; i++) {
+                for (int j = 0; j < height; j++) {
+                    List<Animal> animalsCopy = new ArrayList<>(locations[i][j].animals); // Копия списка
+
+                    if (!animalsCopy.isEmpty()) hasAnimals = true;
+
+                    Map<String, Integer> speciesCount = new HashMap<>();
+                    for (Animal animal : animalsCopy) {
+                        if (animal != null) { // Проверяем, что animal не null
+                            speciesCount.put(animal.getName(), speciesCount.getOrDefault(animal.getName(), 0) + 1);
+                        }
+                    }
+                    System.out.println("Локация [" + i + ", " + j + "]: " + speciesCount + ", Растений: " + locations[i][j].plantCount);
+                }
+            }
+
+            if (!hasAnimals) {
+                System.out.println("Все животные вымерли. Завершаем симуляцию.");
+                System.exit(0);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
+
 }
 
-// 🔥 **Запуск симуляции**
-fun main() {
-    val island = Island(5, 5)
-
-    island.grid[2][2].animals.add(Wolf())
-    island.grid[3][3].animals.add(Deer())
-    island.grid[3][3].animals.add(Rabbit())
-    island.grid[3][3].animals.add(Rabbit()) // Добавляем пару для размножения
-    island.grid[1][1].animals.add(Duck())
-    island.grid[1][1].animals.add(Duck()) // Добавляем пару для уток
-    island.grid[4][4].animals.add(Caterpillar())
-
-    val simulation = Simulation(island)
-    simulation.start()
+public class Main {
+    public static void main(String[] args) {
+        Island island = new Island(10, 10);
+        island.simulate();
+    }
 }
